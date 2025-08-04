@@ -6,29 +6,26 @@ require("dotenv").config();
 
 const app = express();
 
-// ✅ Allow CORS from Vercel domains
-app.use(
-  cors({
-    origin: [
-      "https://kardal-checkout.vercel.app",
-      "https://kardal-checkout-git-main-chansonghas-projects.vercel.app",
-    ],
-    methods: ["GET", "POST"],
-    allowedHeaders: ["Content-Type"],
-  })
-);
+// ✅ CORS configuration
+const corsOptions = {
+  origin: [
+    "https://kardal-checkout.vercel.app",
+    "https://kardal-checkout-git-main-chansonghas-projects.vercel.app",
+  ],
+  methods: ["GET", "POST"],
+  allowedHeaders: ["Content-Type"],
+};
+app.use(cors(corsOptions)); // only once!
+app.options("/api/payment", cors(corsOptions)); // Preflight fix
 
 app.use(express.json());
 
-// ✅ Preflight handler
-app.options("/api/payment", cors());
-
-// ✅ Health check route
+// ✅ Health check
 app.get("/", (req, res) => {
   res.send("🎉 Kardal Checkout Backend is running!");
 });
 
-// ✅ Environment fallback URLs
+// ✅ ENV fallback URLs
 const CAPTURE_ENDPOINT =
   process.env.M2M_CAPTURE_URL ||
   "https://gwpreapi.naps.ma:8085/napspayment/capture";
@@ -39,7 +36,7 @@ const AUTHORIZATION_ENDPOINT =
   process.env.M2M_AUTH_URL ||
   "https://dev-m2m.kesspay.io/napspayment/authorization";
 
-// ✅ Static values
+// ✅ Merchant Info
 const institution_id = "11010";
 const cx_user = "NAPS";
 const cx_password =
@@ -51,7 +48,7 @@ const website_id = "2233";
 const successURL = "https://kardal.com/success";
 const failURL = "https://kardal.com/fail";
 
-// ✅ Helper functions
+// ✅ Helpers
 function generateMac(...args) {
   return crypto.createHash("md5").update(args.join("")).digest("hex");
 }
@@ -66,26 +63,24 @@ function generateCaptureOrderId(authOrderId) {
   return `${baseOrderId}${suffix}`;
 }
 
-// ✅ POST /api/payment
+// ✅ Main API Route
 app.post("/api/payment", async (req, res) => {
   const { cardNumber, expiry, cvv, amount, capture, auth3ds, currency } =
     req.body;
+
   console.log("📥 Received from frontend:", req.body);
 
   const orderId = "ORD" + Date.now();
 
-  let formattedAmount;
-  if (currency === "840") {
-    formattedAmount = Number(amount).toString(); // USD
-  } else {
-    formattedAmount = Math.floor(Number(amount)).toString(); // KHR fallback
-  }
+  let formattedAmount =
+    currency === "840"
+      ? Number(amount).toString()
+      : Math.floor(Number(amount)).toString();
 
   const expirationDate = expiry.replace("/", "");
   const token_mac_value = generateMac(institution_id, cx_user, cx_password);
 
   try {
-    console.log("📥 Requesting token...");
     const tokenResp = await axios.post(TOKEN_ENDPOINT, {
       institution_id,
       cx_user,
@@ -96,7 +91,7 @@ app.post("/api/payment", async (req, res) => {
 
     const securtoken_24 = tokenResp.data.securtoken_24;
     if (!securtoken_24) {
-      return res.status(500).json({ error: "Failed to get securtoken24" });
+      return res.status(500).json({ error: "Missing securtoken24" });
     }
 
     const auth_mac_value = generateMac(orderId, formattedAmount, securtoken_24);
@@ -127,19 +122,18 @@ app.post("/api/payment", async (req, res) => {
       phone: "85512345678",
     };
 
-    console.log("📤 Sending authorization payload:", authPayload);
-
     const authResp = await axios.post(AUTHORIZATION_ENDPOINT, authPayload);
-    console.log("✅ Authorization response:", authResp.data);
-
-    res.status(200).json({
+    return res.status(200).json({
       status: "success",
       message: "Payment authorized",
       data: authResp.data,
     });
   } catch (error) {
-    console.error("❌ M2M API ERROR:", error.response?.data || error.message);
-    res.status(500).json({
+    console.error(
+      "❌ Authorization Error:",
+      error.response?.data || error.message
+    );
+    return res.status(500).json({
       error: "Authorization failed",
       details: error.response?.data || error.message,
     });
