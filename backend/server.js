@@ -6,7 +6,7 @@ require("dotenv").config();
 
 const app = express();
 
-// ✅ Only ONE `origin` key
+// ✅ CORRECT: Allow both production + preview frontend URLs
 app.use(
   cors({
     origin: [
@@ -14,12 +14,24 @@ app.use(
       "https://kardal-checkout-git-main-chansonghas-projects.vercel.app",
     ],
     methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type"], // optional, explicit header support
+    credentials: false, // unless you’re using cookies
   })
 );
 
+// ✅ DO NOT ADD: `app.use(cors())` again below this
 app.use(express.json());
 
+// ✅ Example route for testing
+app.post("/api/payment", (req, res) => {
+  console.log("✅ Received payment request:", req.body);
+  res.status(200).json({ message: "Backend reached successfully!" });
+});
+
 const PORT = process.env.PORT || 5001;
+app.listen(PORT, () => {
+  console.log(`✅ Backend running on http://localhost:${PORT}`);
+});
 
 // Add near the top if not present:
 const CAPTURE_ENDPOINT =
