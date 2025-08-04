@@ -6,10 +6,12 @@ require("dotenv").config();
 
 const app = express();
 
-// ✅ Apply CORS once with proper config
 app.use(
   cors({
-    origin: "https://kardal-checkout.vercel.app",
+    origin: [
+      "https://kardal-checkout.vercel.app",
+      "https://kardal-checkout-git-main-chansonghas-projects.vercel.app",
+    ],
     methods: ["GET", "POST"],
   })
 );
