@@ -20,6 +20,13 @@ app.use(
 );
 
 app.use(express.json());
+// ✅ Fix: respond to preflight requests for CORS
+app.options("/api/payment", cors());
+
+// ✅ Main route
+app.post("/api/payment", async (req, res) => {
+  // your existing payment logic
+});
 
 // ✅ ENV fallback
 const CAPTURE_ENDPOINT =
