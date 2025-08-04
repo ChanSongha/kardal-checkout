@@ -6,6 +6,7 @@ require("dotenv").config();
 
 const app = express();
 
+// ✅ Only ONE `origin` key
 app.use(
   cors({
     origin: [
