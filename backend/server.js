@@ -2,9 +2,18 @@ const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
 const crypto = require("crypto");
+const cors = require("cors");
+
 require("dotenv").config();
 
 const app = express();
+app.use(
+  cors({
+    origin: "https://kardal-checkout.vercel.app", // allow only your frontend
+    methods: ["GET", "POST"],
+  })
+);
+
 app.use(cors());
 app.use(express.json());
 
