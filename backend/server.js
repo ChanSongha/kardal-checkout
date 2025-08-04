@@ -1,12 +1,7 @@
 const express = require("express");
 const cors = require("cors");
-const axios = require("axios");
-const crypto = require("crypto");
-require("dotenv").config();
-
 const app = express();
 
-// ✅ Correct CORS: allow both frontend environments
 app.use(
   cors({
     origin: [
@@ -15,17 +10,18 @@ app.use(
     ],
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type"],
-    credentials: false,
   })
 );
 
 app.use(express.json());
-// ✅ Fix: respond to preflight requests for CORS
+
+// ✅ CORS Preflight fix (add this line!)
 app.options("/api/payment", cors());
 
-// ✅ Main route
+// Your POST endpoint must come AFTER that
 app.post("/api/payment", async (req, res) => {
-  // your existing payment logic
+  console.log("✅ Payment received", req.body);
+  res.status(200).json({ message: "OK" });
 });
 
 // ✅ ENV fallback
