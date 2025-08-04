@@ -1,7 +1,12 @@
 const express = require("express");
 const cors = require("cors");
+const axios = require("axios");
+const crypto = require("crypto");
+require("dotenv").config();
+
 const app = express();
 
+// ✅ CORS config: allow both Vercel URLs
 app.use(
   cors({
     origin: [
@@ -15,10 +20,15 @@ app.use(
 
 app.use(express.json());
 
-// ✅ CORS Preflight fix (add this line!)
+// ✅ Preflight fix for POST route
 app.options("/api/payment", cors());
 
-// Your POST endpoint must come AFTER that
+// ✅ Root health check
+app.get("/", (req, res) => {
+  res.send("🎉 Kardal Checkout Backend is running!");
+});
+
+// ✅ Minimal POST handler for test
 app.post("/api/payment", async (req, res) => {
   console.log("✅ Payment received", req.body);
   res.status(200).json({ message: "OK" });
@@ -65,7 +75,7 @@ function generateCaptureOrderId(authOrderId) {
   return `${baseOrderId}${suffix}`;
 }
 
-// ✅ Main route
+// ✅ Main payment handler
 app.post("/api/payment", async (req, res) => {
   const { cardNumber, expiry, cvv, amount, capture, auth3ds, currency } =
     req.body;
@@ -74,13 +84,10 @@ app.post("/api/payment", async (req, res) => {
 
   const orderId = "ORD" + Date.now();
 
-  let formattedAmount;
-
-  if (currency === "840") {
-    formattedAmount = Number(amount).toString(); // USD
-  } else {
-    formattedAmount = Math.floor(Number(amount)).toString(); // KHR fallback
-  }
+  const formattedAmount =
+    currency === "840"
+      ? Number(amount).toString()
+      : Math.floor(Number(amount)).toString();
 
   console.log(`✅ Processed amount for currency ${currency}:`, formattedAmount);
 
@@ -152,11 +159,7 @@ app.post("/api/payment", async (req, res) => {
   }
 });
 
-// ✅ Root test route
-app.get("/", (req, res) => {
-  res.send("🎉 Kardal Checkout Backend is running!");
-});
-
+// ✅ Start server
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
   console.log(`✅ Backend running on http://localhost:${PORT}`);
