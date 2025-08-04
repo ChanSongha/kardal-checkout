@@ -24,6 +24,12 @@ app.use(express.json());
 app.get("/", (req, res) => {
   res.send("🎉 Kardal Checkout Backend is running!");
 });
+// ✅ Correct PORT usage (Render will inject PORT)
+const PORT = process.env.PORT || 5001;
+
+app.listen(PORT, () => {
+  console.log(`✅ Backend running on http://localhost:${PORT}`);
+});
 
 // ✅ ENV fallback URLs
 const CAPTURE_ENDPOINT =
@@ -138,9 +144,4 @@ app.post("/api/payment", async (req, res) => {
       details: error.response?.data || error.message,
     });
   }
-});
-
-const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => {
-  console.log(`✅ Backend running on http://localhost:${PORT}`);
 });
