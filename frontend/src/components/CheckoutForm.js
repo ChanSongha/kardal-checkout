@@ -42,7 +42,7 @@ export default function CheckoutForm() {
 
     try {
       const res = await fetch(
-        "https://kardal-backend.onrender.com/api/payment",
+        "https://kardal-checkout.onrender.com/api/payment",
         {
           method: "POST",
           headers: {
