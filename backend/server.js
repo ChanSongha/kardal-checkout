@@ -15,20 +15,14 @@ const corsOptions = {
   methods: ["GET", "POST"],
   allowedHeaders: ["Content-Type"],
 };
-app.use(cors(corsOptions)); // only once!
-app.options("/api/payment", cors(corsOptions)); // Preflight fix
+app.use(cors(corsOptions)); // apply once globally
+app.options("/api/payment", cors(corsOptions)); // preflight for specific route
 
 app.use(express.json());
 
 // ✅ Health check
 app.get("/", (req, res) => {
   res.send("🎉 Kardal Checkout Backend is running!");
-});
-// ✅ Correct PORT usage (Render will inject PORT)
-const PORT = process.env.PORT || 5001;
-
-app.listen(PORT, () => {
-  console.log(`✅ Backend running on http://localhost:${PORT}`);
 });
 
 // ✅ ENV fallback URLs
@@ -144,4 +138,10 @@ app.post("/api/payment", async (req, res) => {
       details: error.response?.data || error.message,
     });
   }
+});
+
+// ✅ Final: Listen on injected port
+const PORT = process.env.PORT || 5001;
+app.listen(PORT, () => {
+  console.log(`✅ Backend running on http://localhost:${PORT}`);
 });
