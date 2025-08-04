@@ -41,11 +41,16 @@ export default function CheckoutForm() {
     console.log("✅ Sending payload:", payload);
 
     try {
-      const res = await fetch("http://localhost:5001/api/payment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const res = await fetch(
+        "https://kardal-backend.onrender.com/api/payment",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        }
+      );
 
       const data = await res.json();
 
