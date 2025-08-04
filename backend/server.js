@@ -65,45 +65,40 @@ function generateCaptureOrderId(authOrderId) {
 
 // ✅ Main API Route
 app.post("/api/payment", async (req, res) => {
-  const { cardNumber, expiry, cvv, amount, capture, auth3ds, currency } =
-    req.body;
-
-  console.log("📥 Received from frontend:", req.body);
-
-  const orderId = "ORD" + Date.now();
-
-  let formattedAmount =
-    currency === "840"
-      ? Number(amount).toString()
-      : Math.floor(Number(amount)).toString();
-
-  const expirationDate = expiry.replace("/", "");
-  const token_mac_value = generateMac(institution_id, cx_user, cx_password);
+  // Log frontend payload
+  console.log("📥 Received from frontend:", JSON.stringify(req.body, null, 2));
 
   try {
+    // Request token from M2M
+    console.log("🔑 Requesting token...");
+
     const tokenResp = await axios.post(TOKEN_ENDPOINT, {
       institution_id,
       cx_user,
       cx_password,
       cx_reason: "00",
-      mac_value: token_mac_value,
+      mac_value: generateMac(institution_id, cx_user, cx_password),
     });
+
+    console.log("✅ Token response:", tokenResp.data);
 
     const securtoken_24 = tokenResp.data.securtoken_24;
     if (!securtoken_24) {
-      return res.status(500).json({ error: "Missing securtoken24" });
+      console.error("❌ No securtoken_24 in response");
+      return res.status(500).json({ error: "Missing securtoken_24" });
     }
 
-    const auth_mac_value = generateMac(orderId, formattedAmount, securtoken_24);
+    const orderId = "ORD" + Date.now();
+    const auth_mac_value = generateMac(orderId, req.body.amount, securtoken_24);
 
     const authPayload = {
-      capture: capture === "N" ? "N" : "Y",
+      capture: req.body.capture,
       transactiontype: "0",
-      currency,
+      currency: req.body.currency,
       orderid: orderId,
       recurring: "N",
-      auth3ds: auth3ds === "N" ? "N" : "Y",
-      amount: formattedAmount,
+      auth3ds: req.body.auth3ds,
+      amount: req.body.amount,
       securtoken24: securtoken_24,
       mac_value: auth_mac_value,
       merchantid: merchant_id,
@@ -112,20 +107,27 @@ app.post("/api/payment", async (req, res) => {
       websiteid: website_id,
       successURL,
       failURL,
-      cardnumber: cardNumber,
-      expirydate: expirationDate,
+      cardnumber: req.body.cardNumber,
+      expirydate: req.body.expiry.replace("/", ""),
       holdername: "Oem Chansongha",
-      cvv,
+      cvv: req.body.cvv,
       fname: "Oem",
       lname: "Chansongha",
       email: "oem@example.com",
       phone: "85512345678",
     };
 
+    console.log(
+      "📤 Sending auth payload:",
+      JSON.stringify(authPayload, null, 2)
+    );
+
     const authResp = await axios.post(AUTHORIZATION_ENDPOINT, authPayload);
+    console.log("✅ Authorization response:", authResp.data);
+
     return res.status(200).json({
       status: "success",
-      message: "Payment authorized",
+      message: "Authorized",
       data: authResp.data,
     });
   } catch (error) {
