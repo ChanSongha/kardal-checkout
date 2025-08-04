@@ -6,7 +6,7 @@ require("dotenv").config();
 
 const app = express();
 
-// ✅ CORS config: allow both Vercel URLs
+// ✅ Allow CORS from Vercel domains
 app.use(
   cors({
     origin: [
@@ -20,34 +20,26 @@ app.use(
 
 app.use(express.json());
 
-// ✅ Preflight fix for POST route
+// ✅ Preflight handler
 app.options("/api/payment", cors());
 
-// ✅ Root health check
+// ✅ Health check route
 app.get("/", (req, res) => {
   res.send("🎉 Kardal Checkout Backend is running!");
 });
 
-// ✅ Minimal POST handler for test
-app.post("/api/payment", async (req, res) => {
-  console.log("✅ Payment received", req.body);
-  res.status(200).json({ message: "OK" });
-});
-
-// ✅ ENV fallback
+// ✅ Environment fallback URLs
 const CAPTURE_ENDPOINT =
   process.env.M2M_CAPTURE_URL ||
   "https://gwpreapi.naps.ma:8085/napspayment/capture";
-
 const TOKEN_ENDPOINT =
   process.env.M2M_TOKEN_URL ||
   "https://dev-m2m.kesspay.io/napspayment/createtocken24";
-
 const AUTHORIZATION_ENDPOINT =
   process.env.M2M_AUTH_URL ||
   "https://dev-m2m.kesspay.io/napspayment/authorization";
 
-// ✅ Static configuration
+// ✅ Static values
 const institution_id = "11010";
 const cx_user = "NAPS";
 const cx_password =
@@ -59,12 +51,11 @@ const website_id = "2233";
 const successURL = "https://kardal.com/success";
 const failURL = "https://kardal.com/fail";
 
-// ✅ Helper: MAC generator
+// ✅ Helper functions
 function generateMac(...args) {
   return crypto.createHash("md5").update(args.join("")).digest("hex");
 }
 
-// ✅ Helper: Capture Order ID generator
 function generateCaptureOrderId(authOrderId) {
   const suffix = "-CAP";
   const maxBaseLength = 27 - suffix.length;
@@ -75,28 +66,26 @@ function generateCaptureOrderId(authOrderId) {
   return `${baseOrderId}${suffix}`;
 }
 
-// ✅ Main payment handler
+// ✅ POST /api/payment
 app.post("/api/payment", async (req, res) => {
   const { cardNumber, expiry, cvv, amount, capture, auth3ds, currency } =
     req.body;
-
   console.log("📥 Received from frontend:", req.body);
 
   const orderId = "ORD" + Date.now();
 
-  const formattedAmount =
-    currency === "840"
-      ? Number(amount).toString()
-      : Math.floor(Number(amount)).toString();
-
-  console.log(`✅ Processed amount for currency ${currency}:`, formattedAmount);
+  let formattedAmount;
+  if (currency === "840") {
+    formattedAmount = Number(amount).toString(); // USD
+  } else {
+    formattedAmount = Math.floor(Number(amount)).toString(); // KHR fallback
+  }
 
   const expirationDate = expiry.replace("/", "");
   const token_mac_value = generateMac(institution_id, cx_user, cx_password);
 
   try {
     console.log("📥 Requesting token...");
-
     const tokenResp = await axios.post(TOKEN_ENDPOINT, {
       institution_id,
       cx_user,
@@ -104,8 +93,6 @@ app.post("/api/payment", async (req, res) => {
       cx_reason: "00",
       mac_value: token_mac_value,
     });
-
-    console.log("🔐 Full token response:", tokenResp.data);
 
     const securtoken_24 = tokenResp.data.securtoken_24;
     if (!securtoken_24) {
@@ -159,7 +146,6 @@ app.post("/api/payment", async (req, res) => {
   }
 });
 
-// ✅ Start server
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
   console.log(`✅ Backend running on http://localhost:${PORT}`);
